@@ -5,9 +5,11 @@ PKG_CHECK_MODULES(LIBNL3 REQUIRED libnl-3.0 >=3.1)
 
 
 set(netlink-client_SOURCES
-  src/main.c)
+  src/main.c
+  src/netlink_comm.c)
 set(netlink-client_HEADERS
-  include/linux/rtnetlink.h)
+  include/linux/rtnetlink.h
+  include/netlink_comm.h)
 
 include_directories(include/ ${LIBNL3_INCLUDE_DIRS})
 

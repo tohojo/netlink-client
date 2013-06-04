@@ -6,36 +6,30 @@
  */
 
 #include <stdio.h>
-#include <netlink/netlink.h>
-#include <netlink/socket.h>
 
-static int handler(struct nl_msg *msg, void *arg)
-{
-  printf("Handler called...\n");
-  return 0;
-}
-
+#include "netlink_comm.h"
 
 int main()
 {
-  printf("Initialising...\n");
+	int ret;
 
-  struct nl_sock *sk;
+	printf("Initialising...\n");
 
-  sk = nl_socket_alloc();
-  nl_socket_disable_seq_check(sk);
-  nl_socket_modify_cb(sk, NL_CB_VALID, NL_CB_CUSTOM, handler, NULL);
+	struct nl_sock *sk = create_socket();
+	if(sk == NULL) {
+		fprintf(stderr, "Unable to create netlink socket.\n", sk);
+		return 1;
+	}
+	if((ret = setup_socket(sk)) < 0) {
+		destroy_socket(sk);
+		fprintf(stderr, "Error setting up socket: %d.\n", -ret);
+		return 1;
+	}
 
-  nl_connect(sk, NETLINK_ROUTE);
 
-  if(nl_socket_add_memberships(sk, RTNLGRP_TC_STATS, 0))
-    goto out;
+	printf("Netlink socket set up...\n");
 
-  printf("Joined mcast group...\n");
+	while(1)
+		nl_recvmsgs_default(sk);
 
-  while(1)
-    nl_recvmsgs_default(sk);
-
-out:
-  nl_socket_free(sk);
 }
