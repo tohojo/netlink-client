@@ -40,6 +40,47 @@ int setup_socket(struct nl_sock *sk)
 
 static int netlink_msg_handler(struct nl_msg *msg, void *arg)
 {
-  printf("Handler called...\n");
-  return 0;
+	struct nlmsghdr *hdr;
+	struct tcmsg *tcm;
+	struct nlattr *attrs[TCA_MAX+1];
+	struct nlattr *stat_attrs[TCA_STATS_MAX+1];
+	char qdisc[IFNAMSIZ];
+
+	struct gnet_stats_basic *sb;
+	struct gnet_stats_queue *q;
+
+	printf("Handler called...\n");
+
+	hdr = nlmsg_hdr(msg);
+	tcm = nlmsg_data(hdr);
+	printf("TCM: family: %d, ifindex: %d, parent: %d, handle: %d\n",
+		tcm->tcm_family,
+		tcm->tcm_ifindex,
+		tcm->tcm_parent,
+		tcm->tcm_handle);
+	nlmsg_parse(hdr, sizeof(*tcm), attrs, TCA_MAX, tca_policy);
+
+	if(attrs[TCA_KIND]) {
+		strcpy(qdisc, nla_get_string(attrs[TCA_KIND]));
+		printf("Assigned qdisc: %s\n", qdisc);
+	}
+
+	if(attrs[TCA_STATS2]) {
+		nla_parse_nested(stat_attrs, TCA_STATS_MAX, attrs[TCA_STATS2], tca_stats_policy);
+		if(stat_attrs[TCA_STATS_BASIC]) {
+			sb = nla_data(stat_attrs[TCA_STATS_BASIC]);
+			printf("Bytes: %d, packets: %d\n", sb->bytes, sb->packets);
+		}
+
+		if(stat_attrs[TCA_STATS_QUEUE]) {
+			q = nla_data(stat_attrs[TCA_STATS_QUEUE]);
+			printf("Drops: %d, qlen: %d, backlog: %d, overlimits: %d, requeues: %d\n",
+				q->drops,
+				q->qlen,
+				q->backlog,
+				q->overlimits,
+				q->requeues);
+		}
+	}
+	return 0;
 }
