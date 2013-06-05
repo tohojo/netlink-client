@@ -14,9 +14,11 @@
 #include <netlink/msg.h>
 #include <linux/gen_stats.h>
 
+#include "options.h"
+
 struct nl_sock *create_socket();
 void destroy_socket(struct nl_sock *sk);
-int setup_socket(struct nl_sock *sk);
+int setup_socket(struct nl_sock *sk, struct options *opt);
 
 static struct nla_policy tca_policy[TCA_MAX+1] = {
         [TCA_KIND] = { .type = NLA_STRING,

@@ -21,12 +21,12 @@ void destroy_socket(struct nl_sock *sk)
 	nl_socket_free(sk);
 }
 
-int setup_socket(struct nl_sock *sk)
+int setup_socket(struct nl_sock *sk, struct options *opt)
 {
 	int ret;
 	nl_socket_disable_seq_check(sk);
 
-	if((ret = nl_socket_modify_cb(sk, NL_CB_VALID, NL_CB_CUSTOM, netlink_msg_handler, NULL)) < 0)
+	if((ret = nl_socket_modify_cb(sk, NL_CB_VALID, NL_CB_CUSTOM, netlink_msg_handler, opt)) < 0)
 		return ret;
 
 	if((ret = nl_connect(sk, NETLINK_ROUTE)) < 0)
@@ -49,10 +49,15 @@ static int netlink_msg_handler(struct nl_msg *msg, void *arg)
 	struct gnet_stats_basic *sb;
 	struct gnet_stats_queue *q;
 
+	struct options *opt = arg;
+
 	printf("Handler called...\n");
 
 	hdr = nlmsg_hdr(msg);
 	tcm = nlmsg_data(hdr);
+	if(!has_iface(opt, tcm->tcm_ifindex))
+		return 0;
+
 	printf("TCM: family: %d, ifindex: %d, parent: %d, handle: %d\n",
 		tcm->tcm_family,
 		tcm->tcm_ifindex,
