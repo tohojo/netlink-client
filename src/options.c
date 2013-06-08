@@ -42,10 +42,8 @@ int initialise_options(struct options *opt, int argc, char **argv)
 		goto err;
 	}
 
-	if(parse_options(opt, argc, argv) < 0) {
-		fprintf(stderr, "Error parsing command line options.\n");
+	if(parse_options(opt, argc, argv) < 0)
 		return -2;
-	}
 
 	if(opt->if_c == 0)
 		fprintf(stderr, "Warning: No interfaces selected, you won't see any output.\n");
@@ -67,7 +65,7 @@ int parse_options(struct options *opt, int argc, char **argv)
 	int ifid, val;
 	char *endptr;
 
-	while((o = getopt(argc, argv, "i:l:")) != -1) {
+	while((o = getopt(argc, argv, "hi:l:")) != -1) {
 		switch(o) {
 		case 'i':
 			ifid = rtnl_link_name2i(opt->cache, optarg);
@@ -88,8 +86,10 @@ int parse_options(struct options *opt, int argc, char **argv)
 			}
 			opt->run_length = val;
 			break;
+		case 'h':
 		default:
 			fprintf(stderr, "Usage: %s [-i <ifname>] [-l <length>]\n", argv[0]);
+			return -1;
 			break;
 		}
 	}

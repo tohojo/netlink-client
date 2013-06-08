@@ -15,12 +15,8 @@ int main(int argc, char **argv)
 	int ret;
 	struct options opt;
 
-	printf("Initialising...\n");
-
-	if(initialise_options(&opt, argc, argv) < 0) {
-		fprintf(stderr, "Unable to initialise options.\n");
+	if(initialise_options(&opt, argc, argv) < 0)
 		return 1;
-	}
 
 	printf("Netlink socket set up...\n");
 
