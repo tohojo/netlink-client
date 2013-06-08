@@ -45,18 +45,23 @@ static int netlink_msg_handler(struct nl_msg *msg, void *arg)
 	struct nlattr *attrs[TCA_MAX+1];
 	struct nlattr *stat_attrs[TCA_STATS_MAX+1];
 	char qdisc[IFNAMSIZ];
+	struct timeval current_time;
 
 	struct gnet_stats_basic *sb;
 	struct gnet_stats_queue *q;
 
 	struct options *opt = arg;
 
-	printf("Handler called...\n");
-
 	hdr = nlmsg_hdr(msg);
 	tcm = nlmsg_data(hdr);
 	if(!has_iface(opt, tcm->tcm_ifindex))
 		return 0;
+
+	gettimeofday(&current_time, NULL);
+	printf("[%lu.%06lu] ",
+		(unsigned long)current_time.tv_sec,
+		(unsigned long)current_time.tv_usec);
+
 
 	printf("TCM: family: %d, ifindex: %d, parent: %d, handle: %d\n",
 		tcm->tcm_family,
@@ -87,5 +92,8 @@ static int netlink_msg_handler(struct nl_msg *msg, void *arg)
 				q->requeues);
 		}
 	}
-	return 0;
+	if(current_time.tv_sec < opt->start_time.tv_sec + opt->run_length)
+		return NL_OK;
+	else
+		return NL_STOP;
 }

@@ -15,6 +15,7 @@ int initialise_options(struct options *opt, int argc, char **argv)
 	int ret;
 	opt->if_c = 0;
 	opt->ifs = NULL;
+	opt->run_length = 60;
 	gettimeofday(&opt->start_time, NULL);
 
 	opt->sk_req = create_socket();
@@ -46,6 +47,9 @@ int initialise_options(struct options *opt, int argc, char **argv)
 		return -2;
 	}
 
+	if(opt->if_c == 0)
+		fprintf(stderr, "Warning: No interfaces selected, you won't see any output.\n");
+
 	return 0;
 
 err:
@@ -60,9 +64,10 @@ err:
 int parse_options(struct options *opt, int argc, char **argv)
 {
 	int o;
-	int ifid;
+	int ifid, val;
+	char *endptr;
 
-	while((o = getopt(argc, argv, "i:")) != -1) {
+	while((o = getopt(argc, argv, "i:l:")) != -1) {
 		switch(o) {
 		case 'i':
 			ifid = rtnl_link_name2i(opt->cache, optarg);
@@ -75,8 +80,16 @@ int parse_options(struct options *opt, int argc, char **argv)
 				return -1;
 			}
 			break;
+		case 'l':
+			val = atoi(optarg);
+			if(val < 1) {
+				fprintf(stderr, "Invalid length: %d\n", val);
+				return -1;
+			}
+			opt->run_length = val;
+			break;
 		default:
-			fprintf(stderr, "Usage: %s [-i <ifname>]\n", argv[0]);
+			fprintf(stderr, "Usage: %s [-i <ifname>] [-l <length>]\n", argv[0]);
 			break;
 		}
 	}

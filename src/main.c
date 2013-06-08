@@ -24,7 +24,7 @@ int main(int argc, char **argv)
 
 	printf("Netlink socket set up...\n");
 
-	while(1)
-		nl_recvmsgs_default(opt.sk_listen);
+	nl_recvmsgs_default(opt.sk_listen);
+	return 0;
 
 }
