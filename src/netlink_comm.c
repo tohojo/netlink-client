@@ -79,12 +79,12 @@ static int netlink_msg_handler(struct nl_msg *msg, void *arg)
 		nla_parse_nested(stat_attrs, TCA_STATS_MAX, attrs[TCA_STATS2], tca_stats_policy);
 		if(stat_attrs[TCA_STATS_BASIC]) {
 			sb = nla_data(stat_attrs[TCA_STATS_BASIC]);
-			printf("Bytes: %d, packets: %d\n", sb->bytes, sb->packets);
+			printf("Bytes: %u, packets: %u\n", sb->bytes, sb->packets);
 		}
 
 		if(stat_attrs[TCA_STATS_QUEUE]) {
 			q = nla_data(stat_attrs[TCA_STATS_QUEUE]);
-			printf("Drops: %d, qlen: %d, backlog: %d, overlimits: %d, requeues: %d\n",
+			printf("Drops: %u, qlen: %u, backlog: %u, overlimits: %u, requeues: %u\n",
 				q->drops,
 				q->qlen,
 				q->backlog,
