@@ -2,4 +2,4 @@ CMakeFiles
 CMakeCache.txt
 Makefile
 *.cmake
-netlink-client
+qstatsc
