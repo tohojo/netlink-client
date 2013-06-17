@@ -45,7 +45,10 @@ static int netlink_msg_handler(struct nl_msg *msg, void *arg)
 	struct nlattr *attrs[TCA_MAX+1];
 	struct nlattr *stat_attrs[TCA_STATS_MAX+1];
 	char qdisc[IFNAMSIZ];
+	char ifname[IFNAMSIZ];
 	struct timeval current_time;
+
+	char *ret = NULL;
 
 	struct gnet_stats_basic *sb;
 	struct gnet_stats_queue *q;
@@ -55,36 +58,40 @@ static int netlink_msg_handler(struct nl_msg *msg, void *arg)
 	hdr = nlmsg_hdr(msg);
 	tcm = nlmsg_data(hdr);
 	if(!has_iface(opt, tcm->tcm_ifindex))
-		return 0;
+		return NL_OK;
+
+	if((ret = rtnl_link_i2name(opt->cache, tcm->tcm_ifindex, ifname, IFNAMSIZ)) == NULL)
+		return NL_SKIP;
 
 	gettimeofday(&current_time, NULL);
 	printf("[%lu.%06lu] ",
 		(unsigned long)current_time.tv_sec,
 		(unsigned long)current_time.tv_usec);
 
+	printf("dev: %s ", ifname);
 
-	printf("TCM: family: %d, ifindex: %d, parent: %d, handle: %d\n",
-		tcm->tcm_family,
-		tcm->tcm_ifindex,
-		tcm->tcm_parent,
-		tcm->tcm_handle);
+
 	nlmsg_parse(hdr, sizeof(*tcm), attrs, TCA_MAX, tca_policy);
 
 	if(attrs[TCA_KIND]) {
-		strcpy(qdisc, nla_get_string(attrs[TCA_KIND]));
-		printf("Assigned qdisc: %s\n", qdisc);
+		strncpy(qdisc, nla_get_string(attrs[TCA_KIND]), IFNAMSIZ-1);
+		printf("qdisc: %s ", qdisc);
 	}
+
+	printf("parent: %d handle: %d ",
+		tcm->tcm_parent,
+		tcm->tcm_handle);
 
 	if(attrs[TCA_STATS2]) {
 		nla_parse_nested(stat_attrs, TCA_STATS_MAX, attrs[TCA_STATS2], tca_stats_policy);
 		if(stat_attrs[TCA_STATS_BASIC]) {
 			sb = nla_data(stat_attrs[TCA_STATS_BASIC]);
-			printf("Bytes: %u, packets: %u\n", sb->bytes, sb->packets);
+			printf("transfer: %ub %up\n", sb->bytes, sb->packets);
 		}
 
 		if(stat_attrs[TCA_STATS_QUEUE]) {
 			q = nla_data(stat_attrs[TCA_STATS_QUEUE]);
-			printf("Drops: %u, qlen: %u, backlog: %u, overlimits: %u, requeues: %u\n",
+			printf("Drops: %u qlen: %up %ub overlimits: %u requeues: %u\n",
 				q->drops,
 				q->qlen,
 				q->backlog,
