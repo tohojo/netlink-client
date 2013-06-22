@@ -7,7 +7,6 @@
 
 #include <stdio.h>
 
-#include "netlink_comm.h"
 #include "options.h"
 
 int main(int argc, char **argv)

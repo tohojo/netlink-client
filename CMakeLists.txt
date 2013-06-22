@@ -8,7 +8,8 @@ PKG_CHECK_MODULES(LIBNL3-ROUTE REQUIRED libnl-route-3.0>=3.1)
 set(qstatsc_SOURCES
   src/main.c
   src/netlink_comm.c
-  src/options.c)
+  src/options.c
+  src/qdisc_fq_codel.c)
 set(qstatsc_HEADERS
   include/linux/rtnetlink.h
   include/netlink_comm.h
@@ -19,4 +20,4 @@ include_directories(include/ ${LIBNL3_INCLUDE_DIRS})
 add_executable(qstatsc
   ${qstatsc_HEADERS}
   ${qstatsc_SOURCES})
-target_link_libraries(qstatsc ${LIBNL3_LIBRARIES} ${LIBNL3-ROUTE_LIBRARIES})
+target_link_libraries(qstatsc ${LIBNL3_LIBRARIES} ${LIBNL3-ROUTE_LIBRARIES} dl)

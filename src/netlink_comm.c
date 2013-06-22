@@ -5,9 +5,31 @@
  * 2013-06-04
  */
 
+#include <dlfcn.h>
+#include <stdio.h>
+
+#include <netlink/msg.h>
+#include <netlink/netlink.h>
+#include <netlink/attr.h>
+#include <linux/gen_stats.h>
+
 #include "netlink_comm.h"
 
 static int netlink_msg_handler(struct nl_msg *msg, void *arg);
+
+static struct nla_policy tca_policy[TCA_MAX+1] = {
+        [TCA_KIND] = { .type = NLA_STRING,
+                          .maxlen = IFNAMSIZ },
+        [TCA_STATS2] = { .type = NLA_NESTED },
+};
+
+static struct nla_policy tca_stats_policy[TCA_STATS_MAX+1] = {
+  [TCA_STATS_BASIC] = { .minlen = sizeof(struct gnet_stats_basic)},
+  [TCA_STATS_QUEUE] = { .minlen = sizeof(struct gnet_stats_queue)},
+};
+
+static struct qdisc_handler *qdisc_handler_list;
+
 
 
 
@@ -44,6 +66,7 @@ static int netlink_msg_handler(struct nl_msg *msg, void *arg)
 	struct tcmsg *tcm;
 	struct nlattr *attrs[TCA_MAX+1];
 	struct nlattr *stat_attrs[TCA_STATS_MAX+1];
+	struct qdisc_handler *h;
 	char qdisc[IFNAMSIZ];
 	char ifname[IFNAMSIZ];
 	struct timeval current_time;
@@ -97,9 +120,34 @@ static int netlink_msg_handler(struct nl_msg *msg, void *arg)
 				q->overlimits,
 				q->requeues);
 		}
+		if(stat_attrs[TCA_STATS_APP]) {
+			h = find_qdisc_handler(qdisc);
+			if(h)
+				h->print_stats(stat_attrs[TCA_STATS_APP]);
+		}
 	}
 	if(current_time.tv_sec < opt->start_time.tv_sec + opt->run_length)
 		return NL_OK;
 	else
 		return NL_STOP;
+}
+
+struct qdisc_handler *find_qdisc_handler(const char *name)
+{
+	char buf[128];
+	void *dlh;
+	struct qdisc_handler *h;
+
+	for (h = qdisc_handler_list; h; h = h->next)
+		if(strcmp(h->id, name) == 0)
+			return h;
+
+	dlh = dlopen(NULL, RTLD_LAZY);
+	snprintf(buf, sizeof(buf), "%s_qdisc_handler", name);
+	h = dlsym(dlh, buf);
+	if(h) {
+		h->next = qdisc_handler_list;
+		qdisc_handler_list = h;
+	}
+	return h;
 }
