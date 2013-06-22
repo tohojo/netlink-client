@@ -78,9 +78,8 @@ static int netlink_msg_handler(struct nl_msg *msg, void *arg)
 		printf("qdisc: %s ", qdisc);
 	}
 
-	printf("parent: %d handle: %d ",
-		tcm->tcm_parent,
-		tcm->tcm_handle);
+	printf("handle: %x ",
+		tcm->tcm_handle >> 16);
 
 	if(attrs[TCA_STATS2]) {
 		nla_parse_nested(stat_attrs, TCA_STATS_MAX, attrs[TCA_STATS2], tca_stats_policy);
