@@ -12,6 +12,7 @@ set(qstatsc_SOURCES
   src/qdisc_fq_codel.c)
 set(qstatsc_HEADERS
   include/linux/rtnetlink.h
+  include/linux/pkt_sched.h
   include/netlink_comm.h
   include/options.h)
 
