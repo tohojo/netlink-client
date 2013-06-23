@@ -109,8 +109,8 @@ static int netlink_msg_handler(struct nl_msg *msg, void *arg)
 		nla_parse_nested(stat_attrs, TCA_STATS_MAX, attrs[TCA_STATS2], tca_stats_policy);
 		if(stat_attrs[TCA_STATS_BASIC]) {
 			sb = nla_data(stat_attrs[TCA_STATS_BASIC]);
-			snprintf(buf, sizeof(buf), "%ub %up", sb->bytes, sb->packets);
-			add_record(&rset, "transfer", buf);
+			add_record_u(&rset, "bytes", sb->bytes);
+			add_record_u(&rset, "packets", sb->packets);
 		}
 
 		if(stat_attrs[TCA_STATS_QUEUE]) {
