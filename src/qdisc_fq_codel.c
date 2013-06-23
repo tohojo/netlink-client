@@ -35,14 +35,13 @@ static int fq_codel_parse_stats(struct nlattr *attr, struct recordset *rset)
 	add_record_u(rset, "new_flows_len", st->qdisc_stats.new_flows_len);
 	add_record_u(rset, "old_flows_len", st->qdisc_stats.old_flows_len);
 
-	for(i = 0; i < st->qdisc_stats.act_flows_count; i++) {
+	for(i = 0; i < st->qdisc_stats.act_flows_count; i++, fst++) {
 		snprintf(buf[0], sizeof(buf[0]), "flow %u", fst->flow_id);
 		snprintf(buf[1], sizeof(buf[1]), "qlen %up %ub delay %u",
 			fst->qlen,
 			fst->backlog,
 			fst->delay);
 		add_crecord(rset, buf[0], buf[1]);
-		fst++;
 	}
 	return 0;
 }
