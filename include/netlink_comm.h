@@ -11,6 +11,7 @@
 #include <netlink/netlink.h>
 #include <netlink/socket.h>
 
+#include "formatter.h"
 #include "options.h"
 
 struct nl_sock *create_socket();
@@ -20,7 +21,7 @@ int setup_socket(struct nl_sock *sk, struct options *opt);
 struct qdisc_handler {
 	struct  qdisc_handler *next;
 	const char *id;
-	int 	(*print_stats)(struct nlattr *stats);
+	int 	(*parse_stats)(struct nlattr *stats, struct recordset *rset);
 };
 
 struct qdisc_handler *find_qdisc_handler(const char *name);

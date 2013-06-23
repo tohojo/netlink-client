@@ -10,17 +10,24 @@
 
 #include <stdio.h>
 
+#define DEFAULT_FORMATTER "print"
+#define OUTPUT_WIDTH 80
+#define RECORD_FIELDLENGTH 100
+
+struct record {
+	struct record *next;
+	char name[RECORD_FIELDLENGTH];
+	char value [RECORD_FIELDLENGTH];
+	char composite;
+};
+
 struct recordset {
 	unsigned int length;
 	struct record *records;
 };
 
-struct record {
-	char name[100];
-	char value [100];
-};
-
 struct formatter {
+	struct formatter *next;
 	const char *id;
 	FILE *f;
 	int (*format)(struct formatter *formatter, struct recordset *records);
@@ -28,6 +35,12 @@ struct formatter {
 
 struct formatter *find_formatter(const char *name);
 
-#define DEFAULT_FORMATTER "print"
+int clear_records(struct recordset *rset);
+struct record *add_record(struct recordset *rset, const char *name, const char *value);
+struct record *add_crecord(struct recordset *rset, const char *name, const char *value);
+struct record *add_record_u(struct recordset *rset, const char *name, unsigned int value);
+
+#define for_each_record(rset, r) for(r = rset->records; r; r = r->next)
+
 
 #endif

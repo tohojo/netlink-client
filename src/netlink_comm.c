@@ -14,8 +14,7 @@
 #include <linux/gen_stats.h>
 
 #include "netlink_comm.h"
-
-static int netlink_msg_handler(struct nl_msg *msg, void *arg);
+#include "formatter.h"
 
 static struct nla_policy tca_policy[TCA_MAX+1] = {
         [TCA_KIND] = { .type = NLA_STRING,
@@ -30,8 +29,7 @@ static struct nla_policy tca_stats_policy[TCA_STATS_MAX+1] = {
 
 static struct qdisc_handler *qdisc_handler_list;
 
-
-
+static int netlink_msg_handler(struct nl_msg *msg, void *arg);
 
 struct nl_sock *create_socket()
 {
@@ -72,60 +70,65 @@ static int netlink_msg_handler(struct nl_msg *msg, void *arg)
 	struct timeval current_time;
 
 	char *ret = NULL;
+	char buf[128];
 
 	struct gnet_stats_basic *sb;
 	struct gnet_stats_queue *q;
 
 	struct options *opt = arg;
 
+	struct recordset rset = {0};
+
 	hdr = nlmsg_hdr(msg);
 	tcm = nlmsg_data(hdr);
 	if(!has_iface(opt, tcm->tcm_ifindex))
-		return NL_OK;
+		return NL_SKIP;
 
 	if((ret = rtnl_link_i2name(opt->cache, tcm->tcm_ifindex, ifname, IFNAMSIZ)) == NULL)
 		return NL_SKIP;
 
 	gettimeofday(&current_time, NULL);
-	printf("[%lu.%06lu] ",
+	snprintf(buf, sizeof(buf), "%lu.%06lu",
 		(unsigned long)current_time.tv_sec,
 		(unsigned long)current_time.tv_usec);
-
-	printf("dev: %s ", ifname);
-
+	add_record(&rset, "time", buf);
+	add_record(&rset, "iface", ifname);
 
 	nlmsg_parse(hdr, sizeof(*tcm), attrs, TCA_MAX, tca_policy);
 
 	if(attrs[TCA_KIND]) {
 		strncpy(qdisc, nla_get_string(attrs[TCA_KIND]), IFNAMSIZ-1);
-		printf("qdisc: %s ", qdisc);
+		add_record(&rset, "qdisc", qdisc);
 	}
 
-	printf("handle: %x ",
+	snprintf(buf, sizeof(buf), "%x",
 		tcm->tcm_handle >> 16);
+	add_record(&rset, "handle", buf);
 
 	if(attrs[TCA_STATS2]) {
 		nla_parse_nested(stat_attrs, TCA_STATS_MAX, attrs[TCA_STATS2], tca_stats_policy);
 		if(stat_attrs[TCA_STATS_BASIC]) {
 			sb = nla_data(stat_attrs[TCA_STATS_BASIC]);
-			printf("transfer: %ub %up\n", sb->bytes, sb->packets);
+			snprintf(buf, sizeof(buf), "%ub %up", sb->bytes, sb->packets);
+			add_record(&rset, "transfer", buf);
 		}
 
 		if(stat_attrs[TCA_STATS_QUEUE]) {
 			q = nla_data(stat_attrs[TCA_STATS_QUEUE]);
-			printf("Drops: %u qlen: %up %ub overlimits: %u requeues: %u\n",
-				q->drops,
-				q->qlen,
-				q->backlog,
-				q->overlimits,
-				q->requeues);
+			add_record_u(&rset, "drops", 		q->drops);
+			add_record_u(&rset, "qlen", 		q->qlen);
+			add_record_u(&rset, "backlog", 	q->backlog);
+			add_record_u(&rset, "overlimits", 	q->overlimits);
+			add_record_u(&rset, "requeues", 	q->requeues);
 		}
 		if(stat_attrs[TCA_STATS_APP]) {
 			h = find_qdisc_handler(qdisc);
 			if(h)
-				h->print_stats(stat_attrs[TCA_STATS_APP]);
+				h->parse_stats(stat_attrs[TCA_STATS_APP], &rset);
 		}
 	}
+	opt->formatter->format(opt->formatter, &rset);
+	clear_records(&rset);
 	if(current_time.tv_sec < opt->start_time.tv_sec + opt->run_length)
 		return NL_OK;
 	else

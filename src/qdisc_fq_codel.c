@@ -7,13 +7,15 @@
 
 #include <linux/pkt_sched.h>
 
+#include "formatter.h"
 #include "netlink_comm.h"
 
-static int fq_codel_print_stats(struct nlattr *attr)
+static int fq_codel_parse_stats(struct nlattr *attr, struct recordset *rset)
 {
 	struct tc_fq_codel_xstats *st;
 	struct tc_fq_codel_flow_stats *fst;
 	int i;
+	char buf[2][128];
 
 	if(nla_len(attr) < sizeof(*st))
 		return -1;
@@ -25,20 +27,21 @@ static int fq_codel_print_stats(struct nlattr *attr)
 		return -1;
 	}
 
-	printf("  maxpacket: %u drop_overlimit: %u ecn_mark: %u new_flow_count %u\n",
-		st->qdisc_stats.maxpacket,
-		st->qdisc_stats.drop_overlimit,
-		st->qdisc_stats.ecn_mark,
-		st->qdisc_stats.new_flow_count);
-	printf("  new_flows_len: %u old_flows_len: %u\n",
-		st->qdisc_stats.new_flows_len,
-		st->qdisc_stats.old_flows_len);
+
+	add_record_u(rset, "maxpacket", st->qdisc_stats.maxpacket);
+	add_record_u(rset, "drop_overlimit", st->qdisc_stats.drop_overlimit);
+	add_record_u(rset, "ecn_mark", st->qdisc_stats.ecn_mark);
+	add_record_u(rset, "new_flow_count", st->qdisc_stats.new_flow_count);
+	add_record_u(rset, "new_flows_len", st->qdisc_stats.new_flows_len);
+	add_record_u(rset, "old_flows_len", st->qdisc_stats.old_flows_len);
+
 	for(i = 0; i < st->qdisc_stats.act_flows_count; i++) {
-		printf("  flow %u: qlen %up %ub delay %u",
-			fst->flow_id,
+		snprintf(buf[0], sizeof(buf[0]), "flow %u", fst->flow_id);
+		snprintf(buf[1], sizeof(buf[1]), "qlen %up %ub delay %u",
 			fst->qlen,
 			fst->backlog,
 			fst->delay);
+		add_crecord(rset, buf[0], buf[1]);
 		fst++;
 	}
 	return 0;
@@ -46,5 +49,5 @@ static int fq_codel_print_stats(struct nlattr *attr)
 
 struct qdisc_handler fq_codel_qdisc_handler = {
 	.id = "fq_codel",
-	.print_stats = fq_codel_print_stats,
+	.parse_stats = fq_codel_parse_stats,
 };
