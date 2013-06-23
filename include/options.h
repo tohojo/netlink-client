@@ -17,6 +17,7 @@
 
 
 struct options {
+	char initialised;
 	int if_c;
 	int *ifs;
 	int run_length;
@@ -31,5 +32,6 @@ struct options {
 
 
 int initialise_options(struct options *opt, int argc, char **argv);
+void destroy_options(struct options *opt);
 
 #endif

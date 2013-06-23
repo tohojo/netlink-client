@@ -50,6 +50,7 @@ int initialise_options(struct options *opt, int argc, char **argv)
 	if(opt->if_c == 0)
 		fprintf(stderr, "Warning: No interfaces selected, you won't see any output.\n");
 
+	opt->initialised = 1;
 	return 0;
 
 err:
@@ -59,6 +60,17 @@ err:
 		destroy_socket(opt->sk_listen);
 	return -1;
 
+}
+
+void destroy_options(struct options *opt)
+{
+	if(!opt->initialised)
+		return;
+	if(opt->formatter->f != stdout)
+		fclose(opt->formatter->f);
+	destroy_socket(opt->sk_req);
+	destroy_socket(opt->sk_listen);
+	opt->initialised = 0;
 }
 
 int parse_options(struct options *opt, int argc, char **argv)
