@@ -37,12 +37,17 @@ struct formatter *find_formatter(const char *name)
 struct record *add_record(struct recordset *rset, const char *name, const char *value)
 {
 	struct record *r, *cur;
+	unsigned int len_n, len_v;
 	r = malloc(sizeof(*r));
 	memset(r, 0, sizeof(*r));
 	if(!r)
 		return NULL;
-	strncpy(r->name, name, RECORD_FIELDLENGTH);
-	strncpy(r->value, value, RECORD_FIELDLENGTH);
+	if((len_n = strlen(name)) > RECORD_FIELDLENGTH-1 ||
+		(len_v = strlen(value)) > RECORD_FIELDLENGTH-1)
+		goto err;
+
+	memcpy(r->name, name, len_n+1);
+	memcpy(r->value, value, len_v+1);
 
 	cur = rset->records;
 	if(!cur) {
@@ -55,6 +60,9 @@ struct record *add_record(struct recordset *rset, const char *name, const char *
 	rset->length++;
 
 	return r;
+err:
+	free(r);
+	return NULL;
 }
 
 struct record *add_crecord(struct recordset *rset, const char *name, const char *value)
@@ -110,7 +118,7 @@ int print_format(struct formatter *fmt, struct recordset *rset)
 		fputs(buf, fmt->f);
 	}
 	if(width > 0)
-		fputs("\n", fmt->f);
+		fputc('\n', fmt->f);
 }
 
 struct formatter print_formatter = {

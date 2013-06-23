@@ -97,7 +97,7 @@ static int netlink_msg_handler(struct nl_msg *msg, void *arg)
 	nlmsg_parse(hdr, sizeof(*tcm), attrs, TCA_MAX, tca_policy);
 
 	if(attrs[TCA_KIND]) {
-		strncpy(qdisc, nla_get_string(attrs[TCA_KIND]), IFNAMSIZ-1);
+		strcpy(qdisc, nla_get_string(attrs[TCA_KIND]));
 		add_record(&rset, "qdisc", qdisc);
 	}
 
