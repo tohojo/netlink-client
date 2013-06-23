@@ -10,7 +10,8 @@ set(qstatsc_SOURCES
   src/netlink_comm.c
   src/options.c
   src/qdisc_fq_codel.c
-  src/formatter.c)
+  src/formatter.c
+  src/csv_formatter.c)
 set(qstatsc_HEADERS
   include/linux/rtnetlink.h
   include/linux/pkt_sched.h
