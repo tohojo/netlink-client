@@ -16,6 +16,8 @@ int initialise_options(struct options *opt, int argc, char **argv)
 	opt->if_c = 0;
 	opt->ifs = NULL;
 	opt->run_length = 60;
+	opt->formatter = find_formatter(DEFAULT_FORMATTER);
+	opt->formatter->f = stdout;
 	gettimeofday(&opt->start_time, NULL);
 
 	opt->sk_req = create_socket();
@@ -64,9 +66,20 @@ int parse_options(struct options *opt, int argc, char **argv)
 	int o;
 	int ifid, val;
 	char *endptr;
+	FILE *output;
+	struct formatter *formatter;
 
-	while((o = getopt(argc, argv, "hi:l:")) != -1) {
+	while((o = getopt(argc, argv, "f:hi:l:o:")) != -1) {
 		switch(o) {
+		case 'f':
+			formatter = find_formatter(optarg);
+			if(opt->formatter == NULL) {
+				fprintf(stderr, "Unable to find formatter: %s.\n", optarg);
+				return -1;
+			}
+			formatter->f = opt->formatter->f;
+			opt->formatter = formatter;
+			break;
 		case 'i':
 			ifid = rtnl_link_name2i(opt->cache, optarg);
 			if(ifid == 0) {
@@ -85,6 +98,17 @@ int parse_options(struct options *opt, int argc, char **argv)
 				return -1;
 			}
 			opt->run_length = val;
+			break;
+		case 'o':
+			if(strcmp(optarg, "-") == 0) {
+				formatter->f = stdout;
+			} else {
+				output = fopen(optarg, "w");
+				if(output == NULL) {
+					perror("Unable to open output file");
+					return -1;
+				}
+			}
 			break;
 		case 'h':
 		default:

@@ -9,12 +9,14 @@ set(qstatsc_SOURCES
   src/main.c
   src/netlink_comm.c
   src/options.c
-  src/qdisc_fq_codel.c)
+  src/qdisc_fq_codel.c
+  src/formatter.c)
 set(qstatsc_HEADERS
   include/linux/rtnetlink.h
   include/linux/pkt_sched.h
   include/netlink_comm.h
-  include/options.h)
+  include/options.h
+  include/formatter.h)
 
 include_directories(include/ ${LIBNL3_INCLUDE_DIRS})
 

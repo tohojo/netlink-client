@@ -13,6 +13,8 @@
 #include <netlink/route/link.h>
 #include <errno.h>
 
+#include "formatter.h"
+
 
 struct options {
 	int if_c;
@@ -22,6 +24,7 @@ struct options {
 	struct nl_sock *sk_req;
 	struct nl_sock *sk_listen;
 	struct nl_cache *cache;
+	struct formatter *formatter;
 };
 
 #include "netlink_comm.h"
