@@ -100,14 +100,17 @@ int parse_options(struct options *opt, int argc, char **argv)
 			opt->run_length = val;
 			break;
 		case 'o':
-			if(strcmp(optarg, "-") == 0) {
-				formatter->f = stdout;
-			} else {
+			if(formatter->f != stdout) {
+				fprintf(stderr, "Output file already set.\n");
+				return -1;
+			}
+			if(strcmp(optarg, "-") != 0) {
 				output = fopen(optarg, "w");
 				if(output == NULL) {
 					perror("Unable to open output file");
 					return -1;
 				}
+				formatter->f = output;
 			}
 			break;
 		case 'h':
