@@ -13,7 +13,7 @@ int csv_format(struct formatter *fmt, struct recordset *rset)
 	static char first = 1;
 	if(first) {
 		first = 0;
-		for_each_record(rset, r)
+		for_each_record(r, rset)
 			if(!r->composite) {
 				fputs(r->name, fmt->f);
 				if(r->next)
@@ -21,7 +21,7 @@ int csv_format(struct formatter *fmt, struct recordset *rset)
 			}
 		fprintf(fmt->f, "\n");
 	}
-	for_each_record(rset, r)
+	for_each_record(r, rset)
 		if(!r->composite) {
 			fputs(r->value, fmt->f);
 			if(r->next)

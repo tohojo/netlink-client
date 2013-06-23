@@ -40,7 +40,7 @@ struct record *add_record(struct recordset *rset, const char *name, const char *
 struct record *add_crecord(struct recordset *rset, const char *name, const char *value);
 struct record *add_record_u(struct recordset *rset, const char *name, unsigned int value);
 
-#define for_each_record(rset, r) for(r = rset->records; r; r = r->next)
+#define for_each_record(r, rset) for(r = rset->records; r; r = r->next)
 
 
 #endif

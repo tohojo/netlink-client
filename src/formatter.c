@@ -100,7 +100,7 @@ int print_format(struct formatter *fmt, struct recordset *rset)
 	struct record *r;
 	unsigned int width = 0, buflen;
 	char buf[128];
-	for_each_record(rset, r) {
+	for_each_record(r, rset) {
 		snprintf(buf, sizeof(buf), "%s: %s ", r->name, r->value);
 		width += strnlen(buf, sizeof(buf));
 		if(width > OUTPUT_WIDTH || r->composite) {
