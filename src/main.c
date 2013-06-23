@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <netlink/netlink.h>
 
 #include "options.h"
 
@@ -21,14 +22,12 @@ static void sig_exit(int signal)
 
 struct sigaction sigact = {
 	.sa_handler = sig_exit,
-	.sa_mask = 0,
+	.sa_mask = {},
 	.sa_flags = 0,
 };
 
 int main(int argc, char **argv)
 {
-	int ret;
-
 	if(sigaction(SIGINT, &sigact, NULL) < 0 ||
 		sigaction(SIGTERM, &sigact, NULL) < 0) {
 		perror("Error installing signal handler");

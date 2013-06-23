@@ -28,10 +28,10 @@ struct options {
 	struct formatter *formatter;
 };
 
-#include "netlink_comm.h"
-
-
 int initialise_options(struct options *opt, int argc, char **argv);
 void destroy_options(struct options *opt);
+
+int has_iface(struct options *opt, int ifid);
+int add_iface(struct options *opt, int ifid);
 
 #endif

@@ -65,12 +65,12 @@ static int netlink_msg_handler(struct nl_msg *msg, void *arg)
 	struct nlattr *attrs[TCA_MAX+1];
 	struct nlattr *stat_attrs[TCA_STATS_MAX+1];
 	struct qdisc_handler *h;
-	char qdisc[IFNAMSIZ];
-	char ifname[IFNAMSIZ];
-	struct timeval current_time;
+	char qdisc[IFNAMSIZ] = {0};
+	char ifname[IFNAMSIZ] = {0};
+	struct timeval current_time = {0};
 
 	char *ret = NULL;
-	char buf[128];
+	char buf[128] = {0};
 
 	struct gnet_stats_basic *sb;
 	struct gnet_stats_queue *q;
@@ -137,7 +137,7 @@ static int netlink_msg_handler(struct nl_msg *msg, void *arg)
 
 struct qdisc_handler *find_qdisc_handler(const char *name)
 {
-	char buf[128];
+	char buf[128] = {0};
 	void *dlh;
 	struct qdisc_handler *h;
 

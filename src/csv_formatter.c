@@ -32,8 +32,8 @@ err:
 int csv_format(struct formatter *fmt, struct recordset *rset)
 {
 	struct record *r;
-	static char header[256];
-	char buf[256];
+	static char header[256] = {0};
+	char buf[256] = {0};
 	if(create_header(buf, sizeof(buf), rset) < 0) {
 		fprintf(stderr, "Warning: Ran out of buffer space "
 			"while constructing csv header.\n");
@@ -50,6 +50,7 @@ int csv_format(struct formatter *fmt, struct recordset *rset)
 			fputc(',', fmt->f);
 	}
 	fputc('\n', fmt->f);
+	return 0;
 }
 
 

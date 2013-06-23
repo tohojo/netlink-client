@@ -4,6 +4,8 @@ find_package(PkgConfig)
 PKG_CHECK_MODULES(LIBNL3 REQUIRED libnl-3.0>=3.1)
 PKG_CHECK_MODULES(LIBNL3-ROUTE REQUIRED libnl-route-3.0>=3.1)
 
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wno-long-long")
+
 
 set(qstatsc_SOURCES
   src/main.c

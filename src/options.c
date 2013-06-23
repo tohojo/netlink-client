@@ -6,6 +6,7 @@
  */
 
 #include "options.h"
+#include "netlink_comm.h"
 
 int parse_options(struct options *opt, int argc, char **argv);
 
@@ -77,7 +78,6 @@ int parse_options(struct options *opt, int argc, char **argv)
 {
 	int o;
 	int ifid, val;
-	char *endptr;
 	FILE *output;
 	struct formatter *formatter;
 

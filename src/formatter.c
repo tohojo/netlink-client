@@ -17,7 +17,7 @@ static struct formatter *formatter_list;
 struct formatter *find_formatter(const char *name)
 {
 	struct formatter *fmt;
-	char buf[128];
+	char buf[128] = {0};
 	void *dlh;
 
 	for(fmt = formatter_list; fmt; fmt=fmt->next)
@@ -75,7 +75,7 @@ struct record *add_crecord(struct recordset *rset, const char *name, const char 
 
 struct record *add_record_u(struct recordset *rset, const char *name, unsigned int value)
 {
-	char buf[128];
+	char buf[128] = {0};
 	snprintf(buf, sizeof(buf), "%u", value);
 	return add_record(rset, name, buf);
 }
@@ -106,8 +106,8 @@ struct formatter null_formatter = {
 int print_format(struct formatter *fmt, struct recordset *rset)
 {
 	struct record *r;
-	unsigned int width = 0, buflen;
-	char buf[128];
+	unsigned int width = 0;
+	char buf[128] = {0};
 	for_each_record(r, rset) {
 		snprintf(buf, sizeof(buf), "%s: %s ", r->name, r->value);
 		width += strnlen(buf, sizeof(buf));
@@ -119,6 +119,7 @@ int print_format(struct formatter *fmt, struct recordset *rset)
 	}
 	if(width > 0)
 		fputc('\n', fmt->f);
+	return 0;
 }
 
 struct formatter print_formatter = {

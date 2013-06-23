@@ -15,7 +15,8 @@ static int fq_codel_parse_stats(struct nlattr *attr, struct recordset *rset)
 	struct tc_fq_codel_xstats *st;
 	struct tc_fq_codel_flow_stats *fst;
 	int i;
-	char buf[2][128];
+	char buf[2][128] = {{0}, {0}};
+
 
 	if(nla_len(attr) < sizeof(*st))
 		return -1;
