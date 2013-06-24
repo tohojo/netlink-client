@@ -53,6 +53,9 @@ static int json_format(struct formatter *fmt, struct recordset *rset)
 		case RECORD_TYPE_HEX:
 			yajl_gen_integer(priv->yajl, r->value_uint);
 			break;
+		case RECORD_TYPE_RSET:
+			json_format(fmt, r->value_rset);
+			break;
 		default:
 			break;
 		}
