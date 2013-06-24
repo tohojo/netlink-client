@@ -9,7 +9,7 @@
 
 #include "formatter.h"
 
-int create_header(char *buf, unsigned int maxlen, struct recordset *rset)
+static int create_header(char *buf, unsigned int maxlen, struct recordset *rset)
 {
 	struct record *r;
 	unsigned int pos = 0, len;
@@ -29,7 +29,7 @@ err:
 	return -1;
 }
 
-int csv_format(struct formatter *fmt, struct recordset *rset)
+static int csv_format(struct formatter *fmt, struct recordset *rset)
 {
 	struct record *r;
 	static char header[256] = {0};

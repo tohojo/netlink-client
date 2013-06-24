@@ -93,7 +93,7 @@ int clear_records(struct recordset *rset)
 }
 
 
-int null_format(struct formatter *fmt, struct recordset *records)
+static int null_format(struct formatter *fmt, struct recordset *records)
 {
 	return 0;
 }
@@ -103,7 +103,7 @@ struct formatter null_formatter = {
 	.format = null_format,
 };
 
-int print_format(struct formatter *fmt, struct recordset *rset)
+static int print_format(struct formatter *fmt, struct recordset *rset)
 {
 	struct record *r;
 	unsigned int width = 0;
