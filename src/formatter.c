@@ -80,7 +80,7 @@ struct record *alloc_record(const char *name, size_t len_n, const void *value, s
 	return r;
 }
 
-int clear_records(struct recordset *rset)
+void clear_records(struct recordset *rset)
 {
 	struct record *cur, *next;
 	cur = rset->records;
@@ -89,7 +89,6 @@ int clear_records(struct recordset *rset)
 		destroy_record(cur);
 		cur = next;
 	}
-	return 0;
 }
 
 void destroy_record(struct record *r)

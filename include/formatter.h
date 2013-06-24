@@ -58,7 +58,7 @@ struct formatter {
 struct formatter *find_formatter(const char *name);
 
 struct record *alloc_record(const char *name, size_t len_n, const void *value, size_t len_v);
-int clear_records(struct recordset *rset);
+void clear_records(struct recordset *rset);
 void destroy_record(struct record *r);
 
 struct record *add_record(struct recordset *rset, struct record *r);
