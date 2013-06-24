@@ -30,7 +30,10 @@ struct formatter {
 	struct formatter *next;
 	const char *id;
 	FILE *f;
+	int (*init)(struct formatter *formatter);
 	int (*format)(struct formatter *formatter, struct recordset *records);
+	int priv_size;
+	void *priv;
 };
 
 struct formatter *find_formatter(const char *name);
