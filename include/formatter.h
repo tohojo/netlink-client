@@ -26,7 +26,9 @@ struct record {
 	struct record *next;
 	record_type_t type;
 	char *name;
+	/* lengths are in bytes (so including the terminating \0 for strings) */
 	size_t len_n;
+	/* number of bytes allocated outside the struct (so 0 for (u)ints) */
 	size_t len_v;
 	union {
 		void *value;
