@@ -66,11 +66,14 @@ static int netlink_msg_handler(struct nl_msg *msg, void *arg)
 	struct nlattr *stat_attrs[TCA_STATS_MAX+1];
 	struct qdisc_handler *h;
 	char qdisc[IFNAMSIZ] = {0};
+	int qdisc_l = 0;
 	char ifname[IFNAMSIZ] = {0};
+	int ifname_l = 0;
 	struct timeval current_time = {0};
 
 	char *ret = NULL;
 	char buf[128] = {0};
+	int len;
 
 	struct gnet_stats_basic *sb;
 	struct gnet_stats_queue *q;
@@ -87,39 +90,44 @@ static int netlink_msg_handler(struct nl_msg *msg, void *arg)
 	if((ret = rtnl_link_i2name(opt->cache, tcm->tcm_ifindex, ifname, IFNAMSIZ)) == NULL)
 		return NL_SKIP;
 
+	// No length checking in netlink library.
+	if((ifname_l = 1 + strnlen(ifname, IFNAMSIZ)) >= IFNAMSIZ) {
+		ifname[IFNAMSIZ] = '\0';
+		ifname_l = IFNAMSIZ;
+	}
+
 	gettimeofday(&current_time, NULL);
-	snprintf(buf, sizeof(buf), "%lu.%06lu",
+	len = 1 + snprintf(buf, sizeof(buf), "%lu.%06lu",
 		(unsigned long)current_time.tv_sec,
 		(unsigned long)current_time.tv_usec);
-	add_record(&rset, "time", buf);
-	add_record(&rset, "iface", ifname);
+	add_record_str(&rset, "time", sizeof("time"), buf, len);
+	add_record_str(&rset, "iface", sizeof("iface"), ifname, ifname_l);
 
 	nlmsg_parse(hdr, sizeof(*tcm), attrs, TCA_MAX, tca_policy);
 
 	if(attrs[TCA_KIND]) {
-		strcpy(qdisc, nla_get_string(attrs[TCA_KIND]));
-		add_record(&rset, "qdisc", qdisc);
+		qdisc_l = nla_len(attrs[TCA_KIND]);
+		memcpy(qdisc, nla_get_string(attrs[TCA_KIND]), qdisc_l);
+		add_record_str(&rset, "qdisc", sizeof("qdisc"), qdisc, qdisc_l);
 	}
 
-	snprintf(buf, sizeof(buf), "%x",
-		tcm->tcm_handle >> 16);
-	add_record(&rset, "handle", buf);
+	add_record_hex(&rset, "handle", sizeof("handle"), tcm->tcm_handle >> 16);
 
 	if(attrs[TCA_STATS2]) {
 		nla_parse_nested(stat_attrs, TCA_STATS_MAX, attrs[TCA_STATS2], tca_stats_policy);
 		if(stat_attrs[TCA_STATS_BASIC]) {
 			sb = nla_data(stat_attrs[TCA_STATS_BASIC]);
-			add_record_u(&rset, "bytes", sb->bytes);
-			add_record_u(&rset, "packets", sb->packets);
+			add_record_uint(&rset, "bytes", sizeof("bytes"), sb->bytes);
+			add_record_uint(&rset, "packets", sizeof("packets"), sb->packets);
 		}
 
 		if(stat_attrs[TCA_STATS_QUEUE]) {
 			q = nla_data(stat_attrs[TCA_STATS_QUEUE]);
-			add_record_u(&rset, "drops", 		q->drops);
-			add_record_u(&rset, "qlen", 		q->qlen);
-			add_record_u(&rset, "backlog", 	q->backlog);
-			add_record_u(&rset, "overlimits", 	q->overlimits);
-			add_record_u(&rset, "requeues", 	q->requeues);
+			add_record_uint(&rset, "drops", sizeof("drops"), q->drops);
+			add_record_uint(&rset, "qlen", sizeof("qlen"), q->qlen);
+			add_record_uint(&rset, "backlog", sizeof("backlog"), q->backlog);
+			add_record_uint(&rset, "overlimits", sizeof("overlimits"), q->overlimits);
+			add_record_uint(&rset, "requeues", sizeof("requeues"), q->requeues);
 		}
 		if(stat_attrs[TCA_STATS_APP]) {
 			h = find_qdisc_handler(qdisc);

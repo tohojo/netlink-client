@@ -11,6 +11,7 @@
 #include <errno.h>
 
 #include "formatter.h"
+#include "util.h"
 
 static struct formatter *formatter_list;
 
@@ -46,50 +47,37 @@ struct formatter *find_formatter(const char *name)
 	return fmt;
 }
 
-struct record *add_record(struct recordset *rset, const char *name, const char *value)
+/**
+ * Allocate a new record structure.
+ *
+ * Memory is allocated with len_n + len_v space at the end of the structure.
+ * The record name pointer is initiated to point at the memory
+ * just after the end of the structure, and the name is copied here.
+ *
+ * If len_v > 0, the value pointer is initialised to point to the memory
+ * after the record name.
+ **/
+struct record *alloc_record(const char *name, size_t len_n, const void *value, size_t len_v)
 {
-	struct record *r, *cur;
-	unsigned int len_n, len_v;
-	r = malloc(sizeof(*r));
-	memset(r, 0, sizeof(*r));
+	struct record *r;
+	int len = len_n + len_v;
+	r = malloc(sizeof(*r) + len);
 	if(!r)
 		return NULL;
-	if((len_n = strlen(name)) > RECORD_FIELDLENGTH-1 ||
-		(len_v = strlen(value)) > RECORD_FIELDLENGTH-1)
-		goto err;
+	memset(r, 0, len);
+	r->next = NULL;
+	r->name = (char *)r + sizeof(*r);
+	r->len_n = len_n;
+	r->len_v = len_v;
+	memcpy(r->name, name, len_n);
 
-	memcpy(r->name, name, len_n+1);
-	memcpy(r->value, value, len_v+1);
 
-	cur = rset->records;
-	if(!cur) {
-		rset->records = r;
-	} else {
-		while(cur->next)
-			cur = cur->next;
-		cur->next = r;
-	}
-	rset->length++;
+	if(len_v)
+		r->value = (void *)r + sizeof(*r) + len_n;
+	if(value)
+		memcpy(r->value, value, len_v);
 
 	return r;
-err:
-	free(r);
-	return NULL;
-}
-
-struct record *add_crecord(struct recordset *rset, const char *name, const char *value)
-{
-	struct record *r = add_record(rset, name, value);
-	if(r)
-		r->composite = 1;
-	return r;
-}
-
-struct record *add_record_u(struct recordset *rset, const char *name, unsigned int value)
-{
-	char buf[128] = {0};
-	snprintf(buf, sizeof(buf), "%u", value);
-	return add_record(rset, name, buf);
 }
 
 int clear_records(struct recordset *rset)
@@ -98,11 +86,121 @@ int clear_records(struct recordset *rset)
 	cur = rset->records;
 	while(cur) {
 		next = cur->next;
-		free(cur);
+		destroy_record(cur);
 		cur = next;
 	}
 	return 0;
 }
+
+void destroy_record(struct record *r)
+{
+	if(r->type == RECORD_TYPE_RSET) {
+		clear_records(r->value_rset);
+	}
+	free(r);
+}
+
+struct record *add_record(struct recordset *rset, struct record *r)
+{
+	struct record *cur;
+	cur = rset->records;
+	if(!cur) {
+		rset->records = r;
+	} else {
+		while(cur->next)
+			cur = cur->next;
+		cur->next = r;
+	}
+	rset->len++;
+	return r;
+}
+
+struct record *add_record_str(struct recordset *rset,
+			const char *name, size_t len_n,
+			const char *value, size_t len_v)
+{
+	struct record *r;
+
+	r = alloc_record(name, len_n, value, len_v);
+	if(!r)
+		return NULL;
+
+	r->type = RECORD_TYPE_STRING;
+
+	return add_record(rset, r);
+}
+
+struct record *add_record_int(struct recordset *rset, const char *name, size_t len_n, int value)
+{
+	struct record *r;
+	r = alloc_record(name, len_n, NULL, 0);
+	if(!r)
+		return NULL;
+	r->type = RECORD_TYPE_INT;
+	r->value_int = value;
+
+	return add_record(rset, r);
+}
+
+struct record *add_record_uint(struct recordset *rset, const char *name, size_t len_n, unsigned int value)
+{
+	struct record *r;
+	r = alloc_record(name, len_n, NULL, 0);
+	if(!r)
+		return NULL;
+	r->type = RECORD_TYPE_UINT;
+	r->value_uint = value;
+
+	return add_record(rset, r);
+}
+
+struct record *add_record_hex(struct recordset *rset, const char *name, size_t len_n, unsigned int value)
+{
+	struct record *r = add_record_uint(rset, name, len_n, value);
+	r->type = RECORD_TYPE_HEX;
+	return r;
+}
+
+struct record *add_record_rset(struct recordset *rset,
+			const char *name, size_t len_n,
+			const struct recordset *value)
+{
+	struct record *r;
+	r = alloc_record(name, len_n, value, sizeof(struct recordset));
+	if(!r)
+		return NULL;
+	r->type = RECORD_TYPE_RSET;
+
+	return add_record(rset, r);
+}
+
+int record_format_value(char *buf, size_t len, const struct record *r)
+{
+	switch(r->type) {
+	case RECORD_TYPE_STRING:
+		if(r->len_v > len) {
+			memcpy(buf, r->value_str, len);
+			buf[len] = '\0';
+		} else {
+			memcpy(buf, r->value_str, r->len_v);
+		}
+		return r->len_v;
+		break;
+	case RECORD_TYPE_INT:
+		return 1 + snprintf(buf, len, "%d", r->value_int);
+		break;
+	case RECORD_TYPE_UINT:
+		return 1 + snprintf(buf, len, "%u", r->value_uint);
+		break;
+	case RECORD_TYPE_HEX:
+		return 1 + snprintf(buf, len, "%x", r->value_uint);
+		break;
+	default:
+		buf[0] = '\0';
+		return 0;
+	}
+}
+
 
 
 static int null_format(struct formatter *fmt, struct recordset *records)
@@ -119,15 +217,20 @@ static int print_format(struct formatter *fmt, struct recordset *rset)
 {
 	struct record *r;
 	unsigned int width = 0;
+	int len, len_v;
 	char buf[128] = {0};
 	for_each_record(r, rset) {
-		snprintf(buf, sizeof(buf), "%s: %s ", r->name, r->value);
-		width += strnlen(buf, sizeof(buf));
-		if(width > OUTPUT_WIDTH || r->composite) {
+		len_v = record_format_value(buf, sizeof(buf), r);
+		len = r->len_n + min(sizeof(buf), len_v) + 1;
+		if(width + len > OUTPUT_WIDTH) {
 			fputs("\n  ", fmt->f);
 			width = 2;
 		}
+		width += len;
+		fputs(r->name, fmt->f);
+		fputs(": ", fmt->f);
 		fputs(buf, fmt->f);
+		fputc(' ', fmt->f);
 	}
 	if(width > 0)
 		fputc('\n', fmt->f);

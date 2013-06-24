@@ -9,16 +9,15 @@
 
 #include "formatter.h"
 
-static int create_header(char *buf, unsigned int maxlen, struct recordset *rset)
+static int create_header(char *buf, size_t maxlen, struct recordset *rset)
 {
 	struct record *r;
-	unsigned int pos = 0, len;
+	unsigned int pos = 0;
 	for_each_record(r, rset) {
-		len = strlen(r->name);
-		if(pos+len+2 > maxlen)
+		if(pos+r->len_n+1 > maxlen)
 			goto err;
-		memcpy(buf+pos, r->name, len);
-		pos += len;
+		memcpy(buf+pos, r->name, r->len_n-1);
+		pos += r->len_n-1;
 		if(r->next)
 			buf[pos++] = ',';
 	}
@@ -45,7 +44,8 @@ static int csv_format(struct formatter *fmt, struct recordset *rset)
 		}
 	}
 	for_each_record(r, rset){
-		fputs(r->value, fmt->f);
+		record_format_value(buf, sizeof(buf), r);
+		fputs(buf, fmt->f);
 		if(r->next)
 			fputc(',', fmt->f);
 	}

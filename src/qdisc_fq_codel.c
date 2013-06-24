@@ -14,8 +14,8 @@ static int fq_codel_parse_stats(struct nlattr *attr, struct recordset *rset)
 {
 	struct tc_fq_codel_xstats *st;
 	struct tc_fq_codel_flow_stats *fst;
+	struct recordset nested_rset = {0};
 	int i;
-	char buf[2][128] = {{0}, {0}};
 
 
 	if(nla_len(attr) < sizeof(*st))
@@ -29,20 +29,22 @@ static int fq_codel_parse_stats(struct nlattr *attr, struct recordset *rset)
 	}
 
 
-	add_record_u(rset, "maxpacket", st->qdisc_stats.maxpacket);
-	add_record_u(rset, "drop_overlimit", st->qdisc_stats.drop_overlimit);
-	add_record_u(rset, "ecn_mark", st->qdisc_stats.ecn_mark);
-	add_record_u(rset, "new_flow_count", st->qdisc_stats.new_flow_count);
-	add_record_u(rset, "new_flows_len", st->qdisc_stats.new_flows_len);
-	add_record_u(rset, "old_flows_len", st->qdisc_stats.old_flows_len);
+	add_record_uint(rset, "maxpacket", sizeof("maxpacket"), st->qdisc_stats.maxpacket);
+	add_record_uint(rset, "drop_overlimit", sizeof("drop_overlimit"), st->qdisc_stats.drop_overlimit);
+	add_record_uint(rset, "ecn_mark", sizeof("ecn_mark"), st->qdisc_stats.ecn_mark);
+	add_record_uint(rset, "new_flow_count", sizeof("new_flow_count"), st->qdisc_stats.new_flow_count);
+	add_record_uint(rset, "new_flows_len", sizeof("new_flows_len"), st->qdisc_stats.new_flows_len);
+	add_record_uint(rset, "old_flows_len", sizeof("old_flows_len"), st->qdisc_stats.old_flows_len);
 
-	for(i = 0; i < st->qdisc_stats.act_flows_count; i++, fst++) {
-		snprintf(buf[0], sizeof(buf[0]), "flow %u", fst->flow_id);
-		snprintf(buf[1], sizeof(buf[1]), "qlen %up %ub delay %u",
-			fst->qlen,
-			fst->backlog,
-			fst->delay);
-		add_crecord(rset, buf[0], buf[1]);
+	if(st->qdisc_stats.act_flows_count) {
+
+		for(i = 0; i < st->qdisc_stats.act_flows_count; i++, fst++) {
+			add_record_uint(&nested_rset, "id", sizeof("id"), fst->flow_id);
+			add_record_uint(&nested_rset, "qlen", sizeof("qlen"), fst->qlen);
+			add_record_uint(&nested_rset, "backlog", sizeof("backlog"), fst->backlog);
+			add_record_uint(&nested_rset, "delay", sizeof("delay"), fst->delay);
+			add_record_rset(rset, "flows", sizeof("flows"), &nested_rset);
+		}
 	}
 	return 0;
 }
