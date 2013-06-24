@@ -224,6 +224,11 @@ static int print_format(struct formatter *fmt, struct recordset *rset)
 		fputs(": ", fmt->f);
 		fputs(buf, fmt->f);
 		fputc(' ', fmt->f);
+		if(r->type == RECORD_TYPE_RSET) {
+			fputs("\n    ", fmt->f);
+			print_format(fmt, r->value_rset);
+			width = 0;
+		}
 	}
 	if(width > 0)
 		fputc('\n', fmt->f);
