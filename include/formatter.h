@@ -22,7 +22,7 @@ struct record {
 };
 
 struct recordset {
-	unsigned int length;
+	size_t length;
 	struct record *records;
 };
 
@@ -33,7 +33,7 @@ struct formatter {
 	int (*init)(struct formatter *formatter);
 	void (*destroy)(struct formatter *formatter);
 	int (*format)(struct formatter *formatter, struct recordset *records);
-	int priv_size;
+	size_t priv_size;
 	void *priv;
 };
 
