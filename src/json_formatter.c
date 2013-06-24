@@ -41,6 +41,7 @@ static int json_format(struct formatter *fmt, struct recordset *rset)
 	yajl_gen_map_open(priv->yajl);
 	for_each_record(r, rset) {
 		yajl_gen_string(priv->yajl, (unsigned char*)r->name, r->len_n-1);
+
 		switch(r->type) {
 		case RECORD_TYPE_STRING:
 			yajl_gen_string(priv->yajl, (unsigned char*)r->value_str, r->len_v-1);
