@@ -29,12 +29,6 @@ struct formatter *find_formatter(const char *name)
 	snprintf(buf, sizeof(buf), "%s_formatter", name);
 	fmt = dlsym(dlh, buf);
 	if(fmt) {
-		if(fmt->priv_size && (fmt->priv = malloc(fmt->priv_size)) == NULL) {
-			fprintf(stderr,
-				"Unable to allocate memory for formatter %s.\n",
-				fmt->id);
-			return NULL;
-		}
 		if(fmt->init && fmt->init(fmt) != 0) {
 			fprintf(stderr, "Error during formatter init.\n");
 			if(fmt->priv)

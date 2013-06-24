@@ -51,7 +51,6 @@ struct formatter {
 	int (*init)(struct formatter *formatter);
 	void (*destroy)(struct formatter *formatter);
 	int (*format)(struct formatter *formatter, struct recordset *records);
-	size_t priv_size;
 	void *priv;
 };
 

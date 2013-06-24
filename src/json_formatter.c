@@ -69,10 +69,12 @@ static void json_destroy(struct formatter *fmt)
 	yajl_gen_free(priv->yajl);
 }
 
+static struct json_formatter_data json_priv = {0};
+
 struct formatter json_formatter = {
 	.id = "json",
 	.init = json_init,
 	.destroy = json_destroy,
 	.format = json_format,
-	.priv_size = sizeof(struct json_formatter_data),
+	.priv = &json_priv,
 };
