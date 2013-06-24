@@ -31,6 +31,7 @@ struct formatter {
 	const char *id;
 	FILE *f;
 	int (*init)(struct formatter *formatter);
+	void (*destroy)(struct formatter *formatter);
 	int (*format)(struct formatter *formatter, struct recordset *records);
 	int priv_size;
 	void *priv;

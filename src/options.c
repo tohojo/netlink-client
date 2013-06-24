@@ -67,6 +67,8 @@ void destroy_options(struct options *opt)
 {
 	if(!opt->initialised)
 		return;
+	if(opt->formatter->destroy)
+		opt->formatter->destroy(opt->formatter);
 	if(opt->formatter->f != stdout)
 		fclose(opt->formatter->f);
 	destroy_socket(opt->sk_req);
