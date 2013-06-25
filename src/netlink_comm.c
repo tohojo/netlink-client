@@ -70,10 +70,9 @@ static int netlink_msg_handler(struct nl_msg *msg, void *arg)
 	char ifname[IFNAMSIZ] = {0};
 	int ifname_l = 0;
 	struct timeval current_time = {0};
+	double time;
 
 	char *ret = NULL;
-	char buf[128] = {0};
-	int len;
 
 	struct gnet_stats_basic *sb;
 	struct gnet_stats_queue *q;
@@ -97,10 +96,8 @@ static int netlink_msg_handler(struct nl_msg *msg, void *arg)
 	}
 
 	gettimeofday(&current_time, NULL);
-	len = 1 + snprintf(buf, sizeof(buf), "%lu.%06lu",
-		(unsigned long)current_time.tv_sec,
-		(unsigned long)current_time.tv_usec);
-	add_record_str(&rset, "time", sizeof("time"), buf, len);
+	time = (double)current_time.tv_usec / 1000000 + (double) current_time.tv_sec;
+	add_record_double(&rset, "time", sizeof("time"), time);
 	add_record_str(&rset, "iface", sizeof("iface"), ifname, ifname_l);
 
 	nlmsg_parse(hdr, sizeof(*tcm), attrs, TCA_MAX, tca_policy);

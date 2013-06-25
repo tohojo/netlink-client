@@ -20,6 +20,7 @@ typedef enum {
 	RECORD_TYPE_UINT,
 	RECORD_TYPE_HEX,
 	RECORD_TYPE_RSET,
+	RECORD_TYPE_DOUBLE,
 } record_type_t;
 
 struct record {
@@ -36,6 +37,7 @@ struct record {
 		int value_int;
 		unsigned int value_uint;
 		struct recordset *value_rset;
+		double value_double;
 	};
 };
 
@@ -77,6 +79,10 @@ struct record *add_record_uint(struct recordset *rset,
 struct record *add_record_hex(struct recordset *rset,
 			const char *name, size_t len_n,
 			unsigned int value);
+
+struct record *add_record_double(struct recordset *rset,
+			const char *name, size_t len_n,
+			double value);
 
 struct record *add_record_rset(struct recordset *rset,
 			const char *name, size_t len_n,

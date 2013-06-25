@@ -154,6 +154,18 @@ struct record *add_record_hex(struct recordset *rset, const char *name, size_t l
 	return r;
 }
 
+struct record *add_record_double(struct recordset *rset, const char *name, size_t len_n, double value)
+{
+	struct record *r;
+	r = alloc_record(name, len_n, NULL, 0);
+	if(!r)
+		return NULL;
+	r->type = RECORD_TYPE_DOUBLE;
+	r->value_double = value;
+
+	return add_record(rset, r);
+}
+
 struct record *add_record_rset(struct recordset *rset,
 			const char *name, size_t len_n,
 			const struct recordset *value)
@@ -187,6 +199,9 @@ int record_format_value(char *buf, size_t len, const struct record *r)
 		break;
 	case RECORD_TYPE_HEX:
 		return 1 + snprintf(buf, len, "%x", r->value_uint);
+		break;
+	case RECORD_TYPE_DOUBLE:
+		return 1 + snprintf(buf, len, "%f", r->value_double);
 		break;
 	default:
 		buf[0] = '\0';
