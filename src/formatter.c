@@ -49,11 +49,13 @@ struct formatter *find_formatter(const char *name)
  * Allocate a new record structure.
  *
  * Memory is allocated with len_n + len_v space at the end of the structure.
- * The record name pointer is initiated to point at the memory
- * just after the end of the structure, and the name is copied here.
  *
  * If len_v > 0, the value pointer is initialised to point to the memory
- * after the record name.
+ * just after the structure.
+ *
+ * The record name is recorded at the end of the allocated block, after the
+ * structure itself and the (optional) space for the value (as specified in len_v).
+ *
  **/
 struct record *alloc_record(const char *name, size_t len_n, const void *value, size_t len_v)
 {
@@ -64,14 +66,14 @@ struct record *alloc_record(const char *name, size_t len_n, const void *value, s
 		return NULL;
 	memset(r, 0, len);
 	r->next = NULL;
-	r->name = (char *)r + sizeof(*r);
+	r->name = (char *)r + sizeof(*r) + len_v;
 	r->len_n = len_n;
 	r->len_v = len_v;
 	memcpy(r->name, name, len_n);
 
 
 	if(len_v)
-		r->value = (void *)r + sizeof(*r) + len_n;
+		r->value = (void *)r + sizeof(*r);
 	if(value)
 		memcpy(r->value, value, len_v);
 
