@@ -87,7 +87,7 @@ int parse_options(struct options *opt, int argc, char **argv)
 		switch(o) {
 		case 'f':
 			formatter = find_formatter(optarg);
-			if(opt->formatter == NULL) {
+			if(formatter == NULL) {
 				fprintf(stderr, "Unable to find formatter: %s.\n", optarg);
 				return -1;
 			}
@@ -129,7 +129,7 @@ int parse_options(struct options *opt, int argc, char **argv)
 			break;
 		case 'h':
 		default:
-			fprintf(stderr, "Usage: %s [-i <ifname>] [-l <length>]\n", argv[0]);
+			fprintf(stderr, "Usage: %s [-i <ifname>] [-l <length>] [-f <print|csv|json>] [-o <outfile>]\n", argv[0]);
 			return -1;
 			break;
 		}

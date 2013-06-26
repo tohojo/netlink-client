@@ -20,13 +20,17 @@ struct formatter *find_formatter(const char *name)
 	struct formatter *fmt;
 	char buf[128] = {0};
 	void *dlh;
+	int ret;
 
 	for(fmt = formatter_list; fmt; fmt=fmt->next)
 		if(strcmp(fmt->id, name) == 0)
 			return fmt;
 
+	if((ret = snprintf(buf, sizeof(buf), "%s_formatter", name)) > sizeof(buf)-1) {
+		fprintf(stderr, "Warning: Ran out of buffer space while looking for formatter.\n");
+		return NULL;
+	}
 	dlh = dlopen(NULL, RTLD_LAZY);
-	snprintf(buf, sizeof(buf), "%s_formatter", name);
 	fmt = dlsym(dlh, buf);
 	if(fmt) {
 		if(fmt->init && fmt->init(fmt) != 0) {
