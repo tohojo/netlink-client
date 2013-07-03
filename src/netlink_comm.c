@@ -91,7 +91,7 @@ static int netlink_msg_handler(struct nl_msg *msg, void *arg)
 
 	// No length checking in netlink library.
 	if((ifname_l = 1 + strnlen(ifname, IFNAMSIZ)) >= IFNAMSIZ) {
-		ifname[IFNAMSIZ] = '\0';
+		ifname[IFNAMSIZ-1] = '\0';
 		ifname_l = IFNAMSIZ;
 	}
 

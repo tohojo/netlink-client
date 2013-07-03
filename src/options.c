@@ -114,7 +114,7 @@ int parse_options(struct options *opt, int argc, char **argv)
 			opt->run_length = val;
 			break;
 		case 'o':
-			if(formatter->f != stdout) {
+			if(opt->formatter->f != stdout) {
 				fprintf(stderr, "Output file already set.\n");
 				return -1;
 			}
@@ -124,7 +124,7 @@ int parse_options(struct options *opt, int argc, char **argv)
 					perror("Unable to open output file");
 					return -1;
 				}
-				formatter->f = output;
+				opt->formatter->f = output;
 			}
 			break;
 		case 'h':
