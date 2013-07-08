@@ -134,7 +134,7 @@ static int netlink_msg_handler(struct nl_msg *msg, void *arg)
 	}
 	opt->formatter->format(opt->formatter, &rset);
 	clear_records(&rset);
-	if(current_time.tv_sec < opt->start_time.tv_sec + opt->run_length)
+	if(!opt->run_length || current_time.tv_sec < opt->start_time.tv_sec + opt->run_length)
 		return NL_OK;
 	else
 		return NL_STOP;
