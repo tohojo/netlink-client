@@ -235,6 +235,8 @@ static int print_format(struct formatter *fmt, struct recordset *rset)
 	unsigned int width = 0;
 	int len, len_v;
 	char buf[128] = {0};
+        int repeat = 0;
+        char *last_name = NULL;
 	for_each_record(r, rset) {
 		len_v = record_format_value(buf, sizeof(buf), r);
 		len = r->len_n + min(sizeof(buf), len_v) + 1;
@@ -243,17 +245,26 @@ static int print_format(struct formatter *fmt, struct recordset *rset)
 			width = 2;
 		}
 		width += len;
-		fputs(r->name, fmt->f);
-		fputs(": ", fmt->f);
-		fputs(buf, fmt->f);
-		fputc(' ', fmt->f);
+                if(!last_name || strcmp(last_name, r->name) != 0) {
+                  fputs(r->name, fmt->f);
+                  fputs(": ", fmt->f);
+                  last_name = r->name;
+                  repeat = 0;
+                } else {
+                  repeat = 1;
+                }
+                if(len_v) {
+			fputs(buf, fmt->f);
+			fputc(' ', fmt->f);
+                }
 		if(r->type == RECORD_TYPE_RSET) {
-			fputs("\n    ", fmt->f);
+			if(!repeat) fputc('\n', fmt->f);
+ 			fputs("    ", fmt->f);
 			print_format(fmt, r->value_rset);
 			width = 0;
 		}
 	}
-	if(width > 0)
+	if(width > 0 && !repeat)
 		fputc('\n', fmt->f);
 	return 0;
 }
