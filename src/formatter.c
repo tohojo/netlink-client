@@ -64,7 +64,7 @@ struct record *alloc_record(const char *name, size_t len_n, const void *value, s
 	r = malloc(sizeof(*r) + len);
 	if(!r)
 		return NULL;
-	memset(r, 0, len);
+	memset(r, 0, sizeof(*r) + len);
 	r->next = NULL;
 	r->name = (char *)r + sizeof(*r) + len_v;
 	r->len_n = len_n;
@@ -89,6 +89,8 @@ void clear_records(struct recordset *rset)
 		destroy_record(cur);
 		cur = next;
 	}
+        rset->len = 0;
+        rset->records = NULL;
 }
 
 void destroy_record(struct record *r)

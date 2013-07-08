@@ -39,6 +39,8 @@ static int fq_codel_parse_stats(struct nlattr *attr, struct recordset *rset)
 	if(st->qdisc_stats.act_flows_count) {
 
 		for(i = 0; i < st->qdisc_stats.act_flows_count; i++, fst++) {
+			nested_rset.len = 0;
+			nested_rset.records = NULL;
 			add_record_uint(&nested_rset, "id", sizeof("id"), fst->flow_id);
 			add_record_uint(&nested_rset, "qlen", sizeof("qlen"), fst->qlen);
 			add_record_uint(&nested_rset, "backlog", sizeof("backlog"), fst->backlog);
