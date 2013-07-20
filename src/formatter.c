@@ -64,7 +64,7 @@ struct record *alloc_record(const char *name, size_t len_n, const void *value, s
 	r = malloc(sizeof(*r) + len);
 	if(!r)
 		return NULL;
-	memset(r, 0, len);
+	memset(r, 0, sizeof(*r) + len);
 	r->next = NULL;
 	r->name = (char *)r + sizeof(*r) + len_v;
 	r->len_n = len_n;
@@ -89,6 +89,8 @@ void clear_records(struct recordset *rset)
 		destroy_record(cur);
 		cur = next;
 	}
+        rset->len = 0;
+        rset->records = NULL;
 }
 
 void destroy_record(struct record *r)
@@ -233,6 +235,8 @@ static int print_format(struct formatter *fmt, struct recordset *rset)
 	unsigned int width = 0;
 	int len, len_v;
 	char buf[128] = {0};
+        int repeat = 0;
+        char *last_name = NULL;
 	for_each_record(r, rset) {
 		len_v = record_format_value(buf, sizeof(buf), r);
 		len = r->len_n + min(sizeof(buf), len_v) + 1;
@@ -241,17 +245,26 @@ static int print_format(struct formatter *fmt, struct recordset *rset)
 			width = 2;
 		}
 		width += len;
-		fputs(r->name, fmt->f);
-		fputs(": ", fmt->f);
-		fputs(buf, fmt->f);
-		fputc(' ', fmt->f);
+                if(!last_name || strcmp(last_name, r->name) != 0) {
+                  fputs(r->name, fmt->f);
+                  fputs(": ", fmt->f);
+                  last_name = r->name;
+                  repeat = 0;
+                } else {
+                  repeat = 1;
+                }
+                if(len_v) {
+			fputs(buf, fmt->f);
+			fputc(' ', fmt->f);
+                }
 		if(r->type == RECORD_TYPE_RSET) {
-			fputs("\n    ", fmt->f);
+			if(!repeat) fputc('\n', fmt->f);
+ 			fputs("    ", fmt->f);
 			print_format(fmt, r->value_rset);
 			width = 0;
 		}
 	}
-	if(width > 0)
+	if(width > 0 && !repeat)
 		fputc('\n', fmt->f);
 	return 0;
 }

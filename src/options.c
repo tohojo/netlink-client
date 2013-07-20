@@ -16,7 +16,7 @@ int initialise_options(struct options *opt, int argc, char **argv)
 	int ret;
 	opt->if_c = 0;
 	opt->ifs = NULL;
-	opt->run_length = 60;
+	opt->run_length = 0;
 	opt->formatter = find_formatter(DEFAULT_FORMATTER);
 	opt->formatter->f = stdout;
 	gettimeofday(&opt->start_time, NULL);

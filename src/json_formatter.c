@@ -39,8 +39,14 @@ static int json_format(struct formatter *fmt, struct recordset *rset)
 	struct record *r;
 	struct json_formatter_data *priv = fmt->priv;
 	yajl_gen_map_open(priv->yajl);
+        int repeat = 0;
 	for_each_record(r, rset) {
-		yajl_gen_string(priv->yajl, (unsigned char*)r->name, r->len_n-1);
+		if(r->type != RECORD_TYPE_RSET || !repeat)
+			yajl_gen_string(priv->yajl, (unsigned char*)r->name, r->len_n-1);
+                if(r->type != RECORD_TYPE_RSET) {
+                  if(repeat) yajl_gen_array_close(priv->yajl);
+                repeat = 0;
+                }
 
 		switch(r->type) {
 		case RECORD_TYPE_STRING:
@@ -57,12 +63,16 @@ static int json_format(struct formatter *fmt, struct recordset *rset)
 			yajl_gen_double(priv->yajl, r->value_double);
 			break;
 		case RECORD_TYPE_RSET:
+                  if(!repeat) yajl_gen_array_open(priv->yajl);
 			json_format(fmt, r->value_rset);
+
+			repeat = 1;
 			break;
 		default:
 			break;
 		}
 	}
+        if(repeat) yajl_gen_array_close(priv->yajl);
 	yajl_gen_map_close(priv->yajl);
 	json_print(fmt->f, priv->yajl);
 	return 0;
