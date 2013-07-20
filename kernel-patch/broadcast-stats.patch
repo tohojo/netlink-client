@@ -1,0 +1,449 @@
+diff --git a/include/net/netns/ipv4.h b/include/net/netns/ipv4.h
+index 2ba9de8..ff69564 100644
+--- a/include/net/netns/ipv4.h
++++ b/include/net/netns/ipv4.h
+@@ -64,6 +64,10 @@ struct netns_ipv4 {
+ 
+ 	int sysctl_tcp_ecn;
+ 
++#ifdef CONFIG_NET_SCH_BROADCAST_STATS
++	int sysctl_qdisc_stats_broadcast_interval;
++#endif
++
+ 	kgid_t sysctl_ping_group_range[2];
+ 	long sysctl_tcp_mem[3];
+ 
+diff --git a/include/net/sch_generic.h b/include/net/sch_generic.h
+index e7f4e21..681fd23 100644
+--- a/include/net/sch_generic.h
++++ b/include/net/sch_generic.h
+@@ -78,6 +78,10 @@ struct Qdisc {
+ 	struct netdev_queue	*dev_queue;
+ 	struct Qdisc		*next_sched;
+ 
++#ifdef CONFIG_NET_SCH_BROADCAST_STATS
++	u64 			last_stats_broadcast;
++#endif
++
+ 	struct sk_buff		*gso_skb;
+ 	/*
+ 	 * For performance sake on SMP, we put highly modified fields at the end
+diff --git a/include/uapi/linux/pkt_sched.h b/include/uapi/linux/pkt_sched.h
+index 32aef0a..47d7353 100644
+--- a/include/uapi/linux/pkt_sched.h
++++ b/include/uapi/linux/pkt_sched.h
+@@ -714,6 +714,17 @@ struct tc_fq_codel_qd_stats {
+ 				 */
+ 	__u32	new_flows_len;	/* count of flows in new list */
+ 	__u32	old_flows_len;	/* count of flows in old list */
++
++	__u32	act_flows_count;/* total active flow count, for
++				 * easy access of succeeding per-flow stats)
++				 */
++};
++
++struct tc_fq_codel_flow_stats {
++	__u32	flow_id;
++	__u32	qlen;
++	__u32	backlog;
++	__u32	delay;
+ };
+ 
+ struct tc_fq_codel_cl_stats {
+diff --git a/include/uapi/linux/rtnetlink.h b/include/uapi/linux/rtnetlink.h
+index da0a60e..edee5a9 100644
+--- a/include/uapi/linux/rtnetlink.h
++++ b/include/uapi/linux/rtnetlink.h
+@@ -132,6 +132,9 @@ enum {
+ 	RTM_GETMDB = 86,
+ #define RTM_GETMDB RTM_GETMDB
+ 
++	RTM_QDISC_STATS,
++#define RTM_QDISC_STATS RTM_QDISC_STATS
++
+ 	__RTM_MAX,
+ #define RTM_MAX		(((__RTM_MAX + 3) & ~3) - 1)
+ };
+@@ -613,6 +616,8 @@ enum rtnetlink_groups {
+ #define RTNLGRP_IPV6_NETCONF	RTNLGRP_IPV6_NETCONF
+ 	RTNLGRP_MDB,
+ #define RTNLGRP_MDB		RTNLGRP_MDB
++	RTNLGRP_TC_STATS,
++#define RTNLGRP_TC_STATS	RTNLGRP_TC_STATS
+ 	__RTNLGRP_MAX
+ };
+ #define RTNLGRP_MAX	(__RTNLGRP_MAX - 1)
+diff --git a/net/core/gen_stats.c b/net/core/gen_stats.c
+index ddedf21..c570fde 100644
+--- a/net/core/gen_stats.c
++++ b/net/core/gen_stats.c
+@@ -32,7 +32,8 @@ gnet_stats_copy(struct gnet_dump *d, int type, void *buf, int size)
+ 	return 0;
+ 
+ nla_put_failure:
+-	spin_unlock_bh(d->lock);
++	if(d->lock)
++		spin_unlock_bh(d->lock);
+ 	return -1;
+ }
+ 
+@@ -61,7 +62,8 @@ gnet_stats_start_copy_compat(struct sk_buff *skb, int type, int tc_stats_type,
+ {
+ 	memset(d, 0, sizeof(*d));
+ 
+-	spin_lock_bh(lock);
++	if(lock)
++		spin_lock_bh(lock);
+ 	d->lock = lock;
+ 	if (type)
+ 		d->tail = (struct nlattr *)skb_tail_pointer(skb);
+@@ -245,7 +247,8 @@ gnet_stats_finish_copy(struct gnet_dump *d)
+ 			return -1;
+ 	}
+ 
+-	spin_unlock_bh(d->lock);
++	if(d->lock)
++		spin_unlock_bh(d->lock);
+ 	return 0;
+ }
+ EXPORT_SYMBOL(gnet_stats_finish_copy);
+diff --git a/net/ipv4/sysctl_net_ipv4.c b/net/ipv4/sysctl_net_ipv4.c
+index 960fd29..896429c 100644
+--- a/net/ipv4/sysctl_net_ipv4.c
++++ b/net/ipv4/sysctl_net_ipv4.c
+@@ -851,6 +851,15 @@ static struct ctl_table ipv4_net_table[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= ipv4_tcp_mem,
+ 	},
++#ifdef CONFIG_NET_SCH_BROADCAST_STATS
++	{
++		.procname	= "qdisc_stats_broadcast_interval",
++		.data		= &init_net.ipv4.sysctl_qdisc_stats_broadcast_interval,
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= proc_dointvec
++	},
++#endif
+ 	{ }
+ };
+ 
+@@ -880,6 +889,10 @@ static __net_init int ipv4_sysctl_init_net(struct net *net)
+ 			&net->ipv4.sysctl_ping_group_range;
+ 		table[7].data =
+ 			&net->ipv4.sysctl_tcp_ecn;
++#ifdef CONFIG_NET_SCH_BROADCAST_STATS
++		table[9].data =
++			&net->ipv4.sysctl_qdisc_stats_broadcast_interval;
++#endif
+ 
+ 		/* Don't export sysctls to unprivileged users */
+ 		if (net->user_ns != &init_user_ns)
+diff --git a/net/sched/Kconfig b/net/sched/Kconfig
+index 235e01a..03958f0 100644
+--- a/net/sched/Kconfig
++++ b/net/sched/Kconfig
+@@ -308,6 +308,19 @@ config NET_SCH_PLUG
+ 	  To compile this code as a module, choose M here: the
+ 	  module will be called sch_plug.
+ 
++config NET_SCH_BROADCAST_STATS
++	bool "Enable Qdisc statistics broadcast"
++	---help---
++
++	  Select this option if you want to enable qdisc stats broadcast through
++          netlink multicast. Broadcast happens on packet dequeue, limited to the
++          interval set by the qdisc_stats_broadcast_interval sysctl parameter.
++
++          The statistics will be broadcast to the RTNLGRP_TC_STATS multicast group
++          and the message type is RTM_QDISC_STATS.
++
++          See https://github.com/tohojo/qstatsc for a sample client implementation.
++
+ comment "Classification"
+ 
+ config NET_CLS
+diff --git a/net/sched/sch_api.c b/net/sched/sch_api.c
+index c297e2a..154b316 100644
+--- a/net/sched/sch_api.c
++++ b/net/sched/sch_api.c
+@@ -1772,6 +1772,10 @@ static int __net_init psched_net_init(struct net *net)
+ 	if (e == NULL)
+ 		return -ENOMEM;
+ 
++#ifdef CONFIG_NET_SCH_BROADCAST_STATS
++	net->ipv4.sysctl_qdisc_stats_broadcast_interval = 200000;
++#endif
++
+ 	return 0;
+ }
+ 
+@@ -1782,6 +1786,9 @@ static void __net_exit psched_net_exit(struct net *net)
+ #else
+ static int __net_init psched_net_init(struct net *net)
+ {
++#ifdef CONFIG_NET_SCH_BROADCAST_STATS
++	net->ipv4.sysctl_qdisc_stats_broadcast_interval = 200000;
++#endif
+ 	return 0;
+ }
+ 
+diff --git a/net/sched/sch_fq_codel.c b/net/sched/sch_fq_codel.c
+index 5578628..61f0c0b 100644
+--- a/net/sched/sch_fq_codel.c
++++ b/net/sched/sch_fq_codel.c
+@@ -55,6 +55,7 @@ struct fq_codel_sched_data {
+ 	struct tcf_proto *filter_list;	/* optional external classifier */
+ 	struct fq_codel_flow *flows;	/* Flows table [flows_cnt] */
+ 	u32		*backlogs;	/* backlog table [flows_cnt] */
++	u8 		*qlens;		/* qlen table [flows_cnt] */
+ 	u32		flows_cnt;	/* number of flows */
+ 	u32		perturbation;	/* hash perturbation */
+ 	u32		quantum;	/* psched_mtu(qdisc_dev(sch)); */
+@@ -63,6 +64,10 @@ struct fq_codel_sched_data {
+ 	u32		drop_overlimit;
+ 	u32		new_flow_count;
+ 
++#ifdef CONFIG_NET_SCH_BROADCAST_STATS
++	void 		*stats_buffer;
++#endif
++
+ 	struct list_head new_flows;	/* list of new flows */
+ 	struct list_head old_flows;	/* list of old flows */
+ };
+@@ -159,6 +164,7 @@ static unsigned int fq_codel_drop(struct Qdisc *sch)
+ 	skb = dequeue_head(flow);
+ 	len = qdisc_pkt_len(skb);
+ 	q->backlogs[idx] -= len;
++	q->qlens[idx]--;
+ 	kfree_skb(skb);
+ 	sch->q.qlen--;
+ 	sch->qstats.drops++;
+@@ -187,6 +193,7 @@ static int fq_codel_enqueue(struct sk_buff *skb, struct Qdisc *sch)
+ 	flow = &q->flows[idx];
+ 	flow_queue_add(flow, skb);
+ 	q->backlogs[idx] += qdisc_pkt_len(skb);
++	q->qlens[idx]++;
+ 	sch->qstats.backlog += qdisc_pkt_len(skb);
+ 
+ 	if (list_empty(&flow->flowchain)) {
+@@ -224,6 +231,7 @@ static struct sk_buff *dequeue(struct codel_vars *vars, struct Qdisc *sch)
+ 	if (flow->head) {
+ 		skb = dequeue_head(flow);
+ 		q->backlogs[flow - q->flows] -= qdisc_pkt_len(skb);
++		q->qlens[flow - q->flows]--;
+ 		sch->q.qlen--;
+ 	}
+ 	return skb;
+@@ -379,7 +387,11 @@ static void fq_codel_destroy(struct Qdisc *sch)
+ 
+ 	tcf_destroy_chain(&q->filter_list);
+ 	fq_codel_free(q->backlogs);
++	fq_codel_free(q->qlens);
+ 	fq_codel_free(q->flows);
++#ifdef CONFIG_NET_SCH_BROADCAST_STATS
++	fq_codel_free(q->stats_buffer);
++#endif
+ }
+ 
+ static int fq_codel_init(struct Qdisc *sch, struct nlattr *opt)
+@@ -413,6 +425,22 @@ static int fq_codel_init(struct Qdisc *sch, struct nlattr *opt)
+ 			fq_codel_free(q->flows);
+ 			return -ENOMEM;
+ 		}
++		q->qlens = fq_codel_zalloc(q->flows_cnt * sizeof(u8));
++		if (!q->qlens) {
++			fq_codel_free(q->flows);
++			fq_codel_free(q->backlogs);
++			return -ENOMEM;
++		}
++#ifdef CONFIG_NET_SCH_BROADCAST_STATS
++		q->stats_buffer = fq_codel_zalloc(sizeof(struct tc_fq_codel_xstats) +
++						q->flows_cnt * sizeof(struct tc_fq_codel_flow_stats));
++		if (!q->stats_buffer) {
++			fq_codel_free(q->flows);
++			fq_codel_free(q->backlogs);
++			fq_codel_free(q->qlens);
++			return -ENOMEM;
++		}
++#endif
+ 		for (i = 0; i < q->flows_cnt; i++) {
+ 			struct fq_codel_flow *flow = q->flows + i;
+ 
+@@ -464,6 +492,9 @@ static int fq_codel_dump_stats(struct Qdisc *sch, struct gnet_dump *d)
+ 		.type				= TCA_FQ_CODEL_XSTATS_QDISC,
+ 	};
+ 	struct list_head *pos;
++#ifdef CONFIG_NET_SCH_BROADCAST_STATS
++	struct tc_fq_codel_flow_stats *buf; int ret; unsigned int i; struct tc_fq_codel_flow_stats fst;
++#endif
+ 
+ 	st.qdisc_stats.maxpacket = q->cstats.maxpacket;
+ 	st.qdisc_stats.drop_overlimit = q->drop_overlimit;
+@@ -476,7 +507,26 @@ static int fq_codel_dump_stats(struct Qdisc *sch, struct gnet_dump *d)
+ 	list_for_each(pos, &q->old_flows)
+ 		st.qdisc_stats.old_flows_len++;
+ 
++#ifdef CONFIG_NET_SCH_BROADCAST_STATS
++	st.qdisc_stats.act_flows_count = 0;
++	buf = q->stats_buffer + sizeof(st);
++	for(i = 0; i < q->flows_cnt; i++) {
++		if(q->qlens[i] > 0) {
++			st.qdisc_stats.act_flows_count++;
++			fst.flow_id = i;
++			fst.qlen = q->qlens[i];
++			fst.backlog = q->backlogs[i];
++			fst.delay = codel_time_to_us(q->flows[i].cvars.ldelay);
++			memcpy(buf++, &fst, sizeof(fst));
++		}
++	}
++	memcpy(q->stats_buffer, &st, sizeof(st));
++	ret = gnet_stats_copy_app(d, q->stats_buffer,
++				sizeof(st) + st.qdisc_stats.act_flows_count * sizeof(fst));
++	return ret;
++#else
+ 	return gnet_stats_copy_app(d, &st, sizeof(st));
++#endif
+ }
+ 
+ static struct Qdisc *fq_codel_leaf(struct Qdisc *sch, unsigned long arg)
+@@ -527,7 +577,6 @@ static int fq_codel_dump_class_stats(struct Qdisc *sch, unsigned long cl,
+ 
+ 	if (idx < q->flows_cnt) {
+ 		const struct fq_codel_flow *flow = &q->flows[idx];
+-		const struct sk_buff *skb = flow->head;
+ 
+ 		memset(&xstats, 0, sizeof(xstats));
+ 		xstats.type = TCA_FQ_CODEL_XSTATS_CLASS;
+@@ -545,10 +594,7 @@ static int fq_codel_dump_class_stats(struct Qdisc *sch, unsigned long cl,
+ 				codel_time_to_us(delta) :
+ 				-codel_time_to_us(-delta);
+ 		}
+-		while (skb) {
+-			qs.qlen++;
+-			skb = skb->next;
+-		}
++		qs.qlen = q->qlens[idx];
+ 		qs.backlog = q->backlogs[idx];
+ 		qs.drops = flow->dropped;
+ 	}
+diff --git a/net/sched/sch_generic.c b/net/sched/sch_generic.c
+index 2022408..dc863e5 100644
+--- a/net/sched/sch_generic.c
++++ b/net/sched/sch_generic.c
+@@ -28,6 +28,7 @@
+ #include <net/sch_generic.h>
+ #include <net/pkt_sched.h>
+ #include <net/dst.h>
++#include <net/netlink.h>
+ 
+ /* Main transmission queue. */
+ 
+@@ -101,6 +102,88 @@ static inline int handle_dev_cpu_collision(struct sk_buff *skb,
+ 	return ret;
+ }
+ 
++#ifdef CONFIG_NET_SCH_BROADCAST_STATS
++static inline u64 qdisc_stats_time(void)
++{
++	u64 ns = ktime_to_ns(ktime_get());
++	do_div(ns, NSEC_PER_USEC);
++	return ns;
++}
++
++static int qdisc_broadcast_stats(struct Qdisc *q)
++{
++	struct tcmsg *tcm;
++	struct nlmsghdr *nlh;
++	struct gnet_dump d;
++	struct sk_buff *skb;
++	struct net *net;
++	unsigned char *b;
++	u64 time;
++
++	if(!q->dev_queue || !q->dev_queue->dev)
++		return 0;
++
++	net = dev_net(qdisc_dev(q));
++
++	if(!netlink_has_listeners(net->rtnl, RTNLGRP_TC_STATS))
++		return 0;
++
++	time = qdisc_stats_time();
++	if(time < q->last_stats_broadcast +
++		net->ipv4.sysctl_qdisc_stats_broadcast_interval)
++		return 0;
++
++	skb = alloc_skb(NLMSG_SPACE(1024), GFP_ATOMIC);
++	if(!skb)
++		return -ENOBUFS;
++	b = skb_tail_pointer(skb);
++
++	nlh = nlmsg_put(skb, 0, 0, RTM_QDISC_STATS, sizeof(*tcm), NLM_F_MULTI);
++	if (!nlh)
++		goto out_free;
++
++	tcm = nlmsg_data(nlh);
++	tcm->tcm_family = AF_UNSPEC;
++	tcm->tcm__pad1 = 0;
++	tcm->tcm__pad2 = 0;
++	tcm->tcm_ifindex = qdisc_dev(q)->ifindex;
++	tcm->tcm_parent = q->parent;
++	tcm->tcm_handle = q->handle;
++	tcm->tcm_info = atomic_read(&q->refcnt);
++
++	if (nla_put_string(skb, TCA_KIND, q->ops->id))
++		goto nla_put_failure;
++
++	if (gnet_stats_start_copy(skb, TCA_STATS2, NULL, &d) < 0)
++		goto nla_put_failure;
++
++	if (q->ops->dump_stats && q->ops->dump_stats(q, &d) < 0)
++		goto nla_put_failure;
++
++	q->qstats.qlen = q->q.qlen;
++	if (gnet_stats_copy_basic(&d, &q->bstats) < 0 ||
++	    gnet_stats_copy_queue(&d, &q->qstats) < 0)
++		goto nla_put_failure;
++
++	if (gnet_stats_finish_copy(&d) < 0)
++		goto nla_put_failure;
++
++	nlh->nlmsg_len = skb_tail_pointer(skb) - b;
++
++	nlmsg_notify(net->rtnl, skb, 0, RTNLGRP_TC_STATS, 0, 0);
++
++	q->last_stats_broadcast = time;
++
++	return 0;
++
++nla_put_failure:
++out_free:
++	kfree_skb(skb);
++	return -1;
++
++}
++#endif
++
+ /*
+  * Transmit one skb, and handle the return status as required. Holding the
+  * __QDISC_STATE_RUNNING bit guarantees that only one CPU can execute this
+@@ -115,6 +198,9 @@ int sch_direct_xmit(struct sk_buff *skb, struct Qdisc *q,
+ 		    spinlock_t *root_lock)
+ {
+ 	int ret = NETDEV_TX_BUSY;
++#ifdef CONFIG_NET_SCH_BROADCAST_STATS
++	qdisc_broadcast_stats(q);
++#endif
+ 
+ 	/* And release qdisc */
+ 	spin_unlock(root_lock);
+@@ -565,6 +651,9 @@ struct Qdisc *qdisc_alloc(struct netdev_queue *dev_queue,
+ 	sch->enqueue = ops->enqueue;
+ 	sch->dequeue = ops->dequeue;
+ 	sch->dev_queue = dev_queue;
++#ifdef CONFIG_NET_SCH_BROADCAST_STATS
++	sch->last_stats_broadcast = qdisc_stats_time();
++#endif
+ 	dev_hold(dev);
+ 	atomic_set(&sch->refcnt, 1);
+ 
